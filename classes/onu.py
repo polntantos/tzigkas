@@ -21,21 +21,25 @@ class Onu:
 			self.buffer = 0
 
 	def getName(self):
-		return 'Onu_name='+str(self.name)
+		return 'Name='+str(self.name)
 
 	def getStatus(self):
 		return 'Status='+str(self.status)
 
 	def getBuffer(self):
-		return 'Onu_Buffer='+str(self.buffer)
+		return 'Buffer='+str(self.buffer)
 
-	def getrtt(self):
+	def getRtt(self):
 		return 'rtt='+str(self.rtt)
 
-	def receivePermission(self):
+	def receivePermission(self,windowSize):
 		self.time_for_answer=int(self.rtt)
-		self.transmit_time_left=int(self.buffer/100)+self.rtt+1
-		self.status='transmitting'
+		if(windowSize > 0):
+			self.transmit_time_left=windowSize+1
+			self.status='transmitting'
+			return 1;
+		else:
+			return 0;
 
 	def transmitBuffer(self):
 		self.transmit_time_left-=1
@@ -46,15 +50,14 @@ class Onu:
 		
 		# print('Onu', self.name, 'transmition time left:',self.transmit_time_left,sep=' ')
 
-		if self.buffer>0:
+		if self.transmit_time_left>=1:
 			self.buffer-=100
 			if(self.buffer<=0):
 				self.buffer=0
-				self.status='idle'
-			return (self.buffer)
 		else:
 			self.status='idle'
-			return 0
+			
+		return (self.buffer)
 
 	def loadNextPack(self):
 		if self.listOfPackets:
