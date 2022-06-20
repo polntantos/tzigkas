@@ -61,7 +61,10 @@ class Onu:
 
 	def loadNextPack(self):
 		if self.listOfPackets:
-			self.buffer = self.listOfPackets.pop(0)
+			if self.buffer==0:
+				self.buffer = self.listOfPackets.pop(0)
+			else :
+				self.buffer = self.buffer+self.listOfPackets.pop(0)
 			return self.buffer
 		else:
 			return 0

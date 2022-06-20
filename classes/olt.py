@@ -45,8 +45,11 @@ class Olt:
 			onu.loadNextPack()
 
 		if self.activeOnu==onu and onu.transmit_time_left<=0:
+			if self.algo=='hybrid':
+				self.activeOnu.loadNextPack()
 			self.activeOnu=None
 			self.nextOnu=None
+
 
 	def logOnusBuffers(self):
 		onusArray = []
