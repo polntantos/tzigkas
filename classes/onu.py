@@ -67,4 +67,4 @@ class Onu:
 				self.buffer = self.buffer+self.listOfPackets.pop(0)
 			return self.buffer
 		else:
-			return 0
+			return None

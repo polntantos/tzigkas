@@ -1,4 +1,7 @@
 import time
+import pandas as pd # excel reading
+import numpy as np
+import copy
 
 from classes.onu import Onu
 
@@ -7,6 +10,9 @@ class Olt:
 	activeOnu = None
 	nextOnu = None
 	windowSize = None
+	stat_line={}
+	timeSheet=[]
+	rounds = 10
 
 	def __init__(self,name,windowSize=10,algo='full_buffer'):
 		self.name = name
@@ -15,7 +21,7 @@ class Olt:
 
 	def discoverOnu(self,onu):
 		Olt.pollingTable.append(onu)
-		
+	
 	def forgetOnu(self,onu):
 		Olt.pollingTable.remove(onu)
 	
@@ -41,12 +47,12 @@ class Olt:
 	def receivePacket(self,onu):
 		buffer = onu.transmitBuffer()
 		print('remaining buffer for cur onu',onu.getName(),buffer,'transmition time left:',onu.transmit_time_left,sep=' ')
-		if buffer<=0:
-			onu.loadNextPack()
+		if buffer<=0 and self.algo!='hybrid':
+			new_pack = onu.loadNextPack()
 
 		if self.activeOnu==onu and onu.transmit_time_left<=0:
-			if self.algo=='hybrid':
-				self.activeOnu.loadNextPack()
+			if (self.algo=='hybrid') :
+				new_pack = self.activeOnu.loadNextPack()
 			self.activeOnu=None
 			self.nextOnu=None
 
@@ -57,14 +63,18 @@ class Olt:
 		result = time.strftime("%I:%M:%S %p", localtime)
 		for onu in Olt.pollingTable:
 			onusArray.append(onu.getName()+' '+onu.getBuffer()+' '+onu.getRtt()+' '+onu.getStatus())
+			self.stat_line[onu.name]=onu.buffer
 		print(*onusArray,result,sep='|')
+		self.stat_line['timestamp']=result
 		if(self.activeOnu!=None and self.nextOnu!=None):
 			print('active Onu:',self.activeOnu.getName(),'next Onu:',self.nextOnu.getName(), sep=' ')
+			self.stat_line['active Onu']=self.activeOnu.name
+			self.stat_line['next Onu']=self.nextOnu.name
 		print(' ')
 
 	def work(self):
 		flag=True
-		while flag:
+		while self.rounds>0:
 			# cur_second = int (time.time())
 			Olt.logOnusBuffers(self)
 			for onu in Olt.pollingTable:
@@ -88,4 +98,17 @@ class Olt:
 					elif (self.activeOnu.transmit_time_left<=self.nextOnu.rtt):
 						self.receivePacket(onu)
 			time.sleep(1)
-			
+			print(self.stat_line.items())
+			# tempValArray = np.array(self.stat_line.values())
+			# self.timeSheet.append(tempValArray.copy())
+			temparr=copy.deepcopy(self.stat_line)
+			self.timeSheet.append(temparr.values())
+			self.rounds=self.rounds-1
+			# print(self.timeSheet)
+
+		print(self.timeSheet)
+		excel=pd.DataFrame(
+			self.timeSheet,
+			columns=self.stat_line.keys()
+		)
+		excel.to_excel('output.xlsx')
