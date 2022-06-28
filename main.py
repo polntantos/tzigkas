@@ -5,9 +5,9 @@ sys.path.append(".")
 from classes.olt import Olt
 from classes.onu import Onu
 
-onu1 = Onu("Onu1",[600,200,0,0,0],1)
-onu2 = Onu("Onu2",[100,200,300,100,0],2)
-onu3 = Onu("Onu3",[300,200,300,0,100],1)
+onu1 = Onu("Onu1",[600,200,300,100,100],2)
+onu2 = Onu("Onu2",[600,200,300,100,100],2)
+onu3 = Onu("Onu3",[600,200,300,100,100],2)
 # onu4 = Onu("name4","test4",4)
 
 while True:

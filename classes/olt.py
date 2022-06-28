@@ -12,7 +12,7 @@ class Olt:
 	windowSize = None
 	stat_line={}
 	timeSheet=[]
-	rounds = 10
+	rounds = 100
 
 	def __init__(self,name,windowSize=10,algo='full_buffer'):
 		self.name = name
@@ -46,16 +46,27 @@ class Olt:
 
 	def receivePacket(self,onu):
 		buffer = onu.transmitBuffer()
-		print('remaining buffer for cur onu',onu.getName(),buffer,'transmition time left:',onu.transmit_time_left,sep=' ')
+		# print('remaining buffer for cur onu',onu.getName(),buffer,'transmition time left:',onu.transmit_time_left,sep=' ')
 		if buffer<=0 and self.algo!='hybrid':
 			new_pack = onu.loadNextPack()
 
 		if self.activeOnu==onu and onu.transmit_time_left<=0:
 			if (self.algo=='hybrid') :
 				new_pack = self.activeOnu.loadNextPack()
-			self.activeOnu=None
-			self.nextOnu=None
+			self.setOnus()
 
+	def setOnus(self):
+		if self.nextOnu==None and self.pollingTable:
+			self.activeOnu=self.pollingTable[0]
+			self.nextOnu=self.pollingTable[1]
+		else:
+			self.activeOnu=self.nextOnu
+			if self.activeOnu==self.pollingTable[-1]:
+				self.nextOnu=self.pollingTable[0]
+			else:
+				index = self.pollingTable.index(self.activeOnu)
+				self.nextOnu=self.pollingTable[index+1]
+			self.receivePacket(self.activeOnu)
 
 	def logOnusBuffers(self):
 		onusArray = []
@@ -64,6 +75,9 @@ class Olt:
 		for onu in Olt.pollingTable:
 			onusArray.append(onu.getName()+' '+onu.getBuffer()+' '+onu.getRtt()+' '+onu.getStatus())
 			self.stat_line[onu.name]=onu.buffer
+			self.stat_line[onu.name+' status']=onu.status
+			self.stat_line[onu.name+' time_for_answer']=onu.time_for_answer
+			self.stat_line[onu.name+' transmit_time_left']=onu.transmit_time_left
 		print(*onusArray,result,sep='|')
 		self.stat_line['timestamp']=result
 		if(self.activeOnu!=None and self.nextOnu!=None):
@@ -73,40 +87,31 @@ class Olt:
 		print(' ')
 
 	def work(self):
-		flag=True
+		# flag=True
 		while self.rounds>0:
-			# cur_second = int (time.time())
-			Olt.logOnusBuffers(self)
-			for onu in Olt.pollingTable:
-				# print(Olt.pollingTable)
-				if self.activeOnu==None:
-					self.activeOnu=onu
-				
-				if self.nextOnu==None:
-					if onu != self.activeOnu:
-						self.nextOnu=onu
-    
-				if self.activeOnu==onu:
-					if(onu.status=='idle'):
-						self.grant(onu)
-					else:
-						self.receivePacket(onu)
 
-				if self.nextOnu==onu and self.activeOnu!=None:
-					if((onu.status=='idle') and (self.activeOnu.transmit_time_left<=self.nextOnu.rtt)):
-						self.grant(onu)
-					elif (self.activeOnu.transmit_time_left<=self.nextOnu.rtt):
-						self.receivePacket(onu)
-			time.sleep(1)
-			print(self.stat_line.items())
-			# tempValArray = np.array(self.stat_line.values())
-			# self.timeSheet.append(tempValArray.copy())
+			if self.activeOnu==None:
+				self.setOnus()
+
+			if self.activeOnu!=None:
+				if(self.activeOnu.status=='idle'):
+					self.grant(self.activeOnu)
+				else:
+					self.receivePacket(self.activeOnu)
+			
+			if((self.nextOnu.status=='idle') and (self.activeOnu.transmit_time_left<=self.nextOnu.rtt)):
+				self.grant(self.nextOnu)
+			elif (self.activeOnu.transmit_time_left<=self.nextOnu.rtt):
+					self.receivePacket(self.nextOnu)
+			
+			# print(self.stat_line.items())
+			Olt.logOnusBuffers(self)
+			
 			temparr=copy.deepcopy(self.stat_line)
 			self.timeSheet.append(temparr.values())
 			self.rounds=self.rounds-1
-			# print(self.timeSheet)
 
-		print(self.timeSheet)
+		# print(self.timeSheet)
 		excel=pd.DataFrame(
 			self.timeSheet,
 			columns=self.stat_line.keys()
