@@ -29,13 +29,13 @@ class Olt:
     #here add an if to check which type of algo you are going to use
     #full packet grant self.transmit_time_left=
 		if self.algo=='full_buffer':
-			window=int(onu.buffer/100)+onu.rtt
+			window=int(onu.buffer/100)+int(onu.rtt)
 			onu.receivePermission(window)
 		elif self.algo=='fixed_window':
-			window=self.windowSize+onu.rtt
+			window=self.windowSize+int(onu.rtt)
 			onu.receivePermission(window)
 		elif self.algo=='hybrid':
-			window=int(onu.buffer/100)+onu.rtt
+			window=int(onu.buffer/100)+int(onu.rtt)
 			if window>self.windowSize:
 				window=self.windowSize+onu.rtt
 			onu.receivePermission(window)
@@ -51,7 +51,7 @@ class Olt:
 			new_pack = onu.loadNextPack()
 
 		if self.activeOnu==onu and onu.transmit_time_left<=0:
-			if (self.algo=='hybrid') :
+			if (self.algo=='hybrid') or (self.algo=='fixed_window'):
 				new_pack = self.activeOnu.loadNextPack()
 			self.setOnus()
 
@@ -102,7 +102,7 @@ class Olt:
 			if((self.nextOnu.status=='idle') and (self.activeOnu.transmit_time_left<=self.nextOnu.rtt)):
 				self.grant(self.nextOnu)
 			elif (self.activeOnu.transmit_time_left<=self.nextOnu.rtt):
-					self.receivePacket(self.nextOnu)
+				self.receivePacket(self.nextOnu)
 			
 			# print(self.stat_line.items())
 			Olt.logOnusBuffers(self)
